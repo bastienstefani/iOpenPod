@@ -19,3 +19,9 @@ trim_trailing_whitespace = false
 
 [Makefile]
 indent_style = tab
+
+[*.bat]
+end_of_line = crlf
+
+[*.{kt,kts}]
+max_line_length = 100

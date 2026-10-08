@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">iOpenPod</string>
+    <string name="title">iOpenPod read-only check</string>
+    <string name="summary">Checks that this phone can read a connected iPod. Nothing is written to the iPod.</string>
+    <string name="access_granted">All files access: granted</string>
+    <string name="access_missing">All files access: missing. It is required to read the iPod Volume.</string>
+    <string name="grant_access">Grant all files access</string>
+    <string name="grant_usb">Allow USB access (serial number)</string>
+    <string name="run_check">Run read-only check</string>
+    <string name="running">Checking…</string>
+    <string name="share_report">Share report</string>
+    <string name="copy_report">Copy report</string>
+    <string name="copied">Report copied</string>
+    <string name="volumes_heading">Storage Volumes</string>
+    <string name="usb_heading">USB devices</string>
+    <string name="none">none</string>
+    <string name="ipod_volume">iPod_Control found</string>
+    <string name="hint_no_volume">An Apple USB device is attached but no Volume contains iPod_Control. A Mac-formatted (HFS+) iPod cannot be mounted by Android; it must be restored in iTunes on Windows (FAT32).</string>
+    <string name="hint_no_device">Connect the iPod through a USB OTG adapter, then wait for Android to mount it.</string>
+    <string name="no_volume_to_check">No removable Volume is mounted.</string>
+    <string name="python_error">The Python runtime failed: %1$s</string>
+</resources>

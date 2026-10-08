@@ -120,10 +120,10 @@ Python 3.12, matching ADR-0001. Build-time consequences:
 
 - the Android build requires Gradle and the Android SDK in addition to UV, which
   ADR-0001 currently names as the only command runner;
-- native wheels must come from Chaquopy's package index; PyPI publishes no Android
-  wheels for Pillow 11.3 through 12.3, and the Chaquopy index could not be reached
-  from this research environment, so Pillow availability for Python 3.12 is
-  unverified;
+- native wheels must come from Chaquopy's package index because PyPI publishes no
+  Android wheels for Pillow 11.3 through 12.3. Chaquopy's newest builds are Pillow
+  11.0.0 and pycryptodome 3.21.0, below the desktop's Pillow 12.3.0 floor; see
+  "Read-only check findings" for their test results;
 - `librosa`/`numba` (Synesthesia), `wasmtime` (HASHAB), `keyring`, PySide6, and
   `winrt-*`/`pyobjc-*` would be excluded from the Android build;
 - pure-Python dependencies such as `mutagen` and `feedparser` should install
@@ -189,7 +189,8 @@ ADR-0008, and discards the existing round-trip tests. Not recommended.
    access, lists storage Volumes and USB devices, finds `iPod_Control`, reads the
    iTunesCDB through `IPodLibrary.parse`, and lists Tracks. No device writes.
    It answers: is the Volume visible, are Device Paths readable, does iPodDB run
-   under Chaquopy, and what USB serial does the Nano report.
+   under Chaquopy, and what USB serial does the Nano report. Implemented in
+   `android/` and `iOpenPod.android.read_only_check`; awaiting a run on hardware.
 2. **Filesystem semantics probe.** Against a scratch directory on the iPod Volume,
    measure rename-over-existing, `fsync`, `flock`, and free-space reporting through
    FUSE. Storage Transactions depend on these behaviors.
@@ -202,6 +203,25 @@ ADR-0008, and discards the existing round-trip tests. Not recommended.
 6. **Adding compatible music.** Sync Execution limited to media the Nano plays
    without conversion.
 7. **Conversion, artwork, Photos, Podcasts** as separate later increments.
+
+## Read-only check findings
+
+Evidence gathered while building the read-only check, before any hardware run:
+
+- The iPodDB, Device Registry, Storage, and read-only check test suites pass
+  unchanged with Pillow 11.0.0 and pycryptodome 3.21.0.
+- `iPodDB.iTunesDB.writer.signature` imported `wasmtime` at module level, so HASH58
+  and HASH72 failed wherever `wasmtime` is unavailable, including Android. The
+  import now happens only when HASHAB is computed.
+- Chaquopy supports PEP 420 namespace packages and honors source-set include and
+  exclude filters, so the APK carries about 2 MB of Python source from `iPodDB`,
+  `device_registry`, `storage`, and `iOpenPod/android`, without the desktop GUI.
+- Under Chaquopy, `Storage()` selects the Linux adapter. It inspected a real
+  tmpfs Mount Point using only `/proc/self/mountinfo` and tolerated the missing
+  udev and sysfs data. On Android it will see the FUSE mount (`fuse`), not the
+  underlying `vfat` Volume, so it cannot report FAT32 limits such as the 4 GiB
+  maximum file size or case-insensitive names. The Android adapter must supply
+  them before any write path is enabled.
 
 ## Prerequisites on the user's side
 

@@ -641,6 +641,13 @@ off preserves custom companions, icons, native labels, and Finder flags across
 selection and saved renames. See ADR-0090 and
 `docs/volume-presentation.md` for platform limits and verification status.
 
+An exploratory Android read-only check lives in `android/`. A Kotlin activity
+embeds Python through Chaquopy and runs `iOpenPod.android.read_only_check`, which
+opens a read-only Filesystem Session on a USB OTG Volume, identifies the iPod, and
+parses its Library without writing. Android is not a release target, no Android
+decision has been recorded, and the check has not yet run on hardware. See
+`docs/research/android-host-feasibility.md` for constraints and open questions.
+
 ## Product and compatibility target
 
 - The Original iOpenPod is the behavioral and research baseline. Its code,
