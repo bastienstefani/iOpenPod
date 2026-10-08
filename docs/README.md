@@ -24,6 +24,8 @@ sessions.
 - [`sync-workflow-audit-2026-09-26.md`](sync-workflow-audit-2026-09-26.md) — scan and Sync findings, fixes, and remaining limits.
 - [`packaging.md`](packaging.md) — native builds, store metadata, validation, and
   unresolved store-release requirements.
+- [`android.md`](android.md) — Android port status: what exists, what is
+  verified, limits, and remaining work.
 - [`licensing.md`](licensing.md) — GPL distribution, corresponding source,
   third-party notices, and optional donations.
 - [`app-updates.md`](app-updates.md) — Install Channel routing, Store and signed

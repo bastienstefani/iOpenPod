@@ -2,6 +2,8 @@
 
 This directory holds the first Android increment described in
 [Android Host feasibility research](../docs/research/android-host-feasibility.md).
+[Android port status](../docs/android.md) lists what is verified, the limits, and
+the remaining work.
 The app checks that an Android phone can read an iPod connected through a USB OTG
 adapter. **It never writes to the iPod.**
 
