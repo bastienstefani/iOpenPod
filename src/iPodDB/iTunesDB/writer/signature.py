@@ -11,13 +11,15 @@ import math
 from base64 import b64decode
 from dataclasses import dataclass
 from functools import cache
-from typing import Protocol, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
-import wasmtime
 from Crypto.Cipher import AES
 
 from iPodDB.iTunesDB.shared.chunk_defs.mhbd import MhbdHeader
 from iPodDB.shared.binary_struct import binary_fields
+
+if TYPE_CHECKING:
+    import wasmtime
 
 
 class _AESBlockCipher(Protocol):
@@ -190,7 +192,11 @@ def verify_hash72(
 
 
 @cache
-def _hashab_module() -> tuple[wasmtime.Engine, wasmtime.Module]:
+def _hashab_module() -> tuple["wasmtime.Engine", "wasmtime.Module"]:
+    # Only HASHAB needs wasmtime. Importing it here keeps HASH58 and HASH72
+    # available on Hosts without a wasmtime build, such as Android.
+    import wasmtime
+
     encoded = importlib.resources.files("iPodDB.iTunesDB.writer").joinpath(
         "calcHashAB.wasm.b64"
     )
@@ -206,6 +212,8 @@ def compute_hashab(digest: bytes, guid: bytes) -> bytes:
         raise ValueError("HASHAB requires a 20-byte SHA1 digest.")
     if len(guid) != 8:
         raise ValueError("HASHAB requires exactly eight FireWire GUID bytes.")
+    import wasmtime
+
     engine, module = _hashab_module()
     store = wasmtime.Store(engine)
     instance = wasmtime.Instance(store, module, [])

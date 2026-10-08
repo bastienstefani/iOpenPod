@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import struct
+import subprocess
+import sys
 
 import pytest
 
@@ -114,3 +116,38 @@ def test_hashab_signs_and_verifies_a_physical_database() -> None:
     assert signed[0xAB : 0xAB + 57] != bytes(57)
     assert verify_hashab(signed, guid)
     assert not verify_hashab(signed, bytes(8))
+
+
+def test_hash58_and_hash72_do_not_require_the_hashab_runtime() -> None:
+    """Hosts without a wasmtime build, such as Android, still sign HASH72."""
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys\n"
+            "sys.modules['wasmtime'] = None\n"
+            "from iPodDB.iTunesDB.writer import signature\n"
+            "from iPodDB.library import parse_hash72_info, recover_hash72_material\n"
+            "data = bytearray(244)\n"
+            "data[:4] = b'mhbd'\n"
+            "data[4:16] = (244).to_bytes(4, 'little') * 2 + (1).to_bytes(4, 'little')\n"
+            "iv, random_part = bytes(range(16)), bytes(range(20, 32))\n"
+            "signed = signature.sign_hash72(bytes(data), iv, random_part)\n"
+            "assert signature.verify_hash72(signed, iv, random_part)\n"
+            "assert recover_hash72_material(signed).iv == iv\n"
+            "info = b'HASHv0' + bytes(20) + random_part + iv\n"
+            "assert parse_hash72_info(info).random_part == random_part\n"
+            "signature.sign_hash58(bytes(data), bytes(8))\n"
+            "try:\n"
+            "    signature.compute_hashab(bytes(20), bytes(8))\n"
+            "except ImportError:\n"
+            "    pass\n"
+            "else:\n"
+            "    raise AssertionError('HASHAB must still need wasmtime')\n",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
