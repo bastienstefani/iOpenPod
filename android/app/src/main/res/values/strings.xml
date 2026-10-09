@@ -21,5 +21,11 @@
     <string name="hint_no_volume">An Apple USB device is attached but Android mounted no Volume for it. A Mac-formatted (HFS+) iPod cannot be mounted by Android; it must be restored in iTunes on Windows (FAT32).</string>
     <string name="hint_no_device">Connect the iPod through a USB OTG adapter, then wait for Android to mount it.</string>
     <string name="no_volume_to_check">No removable Volume is mounted.</string>
+    <string name="run_probe">Test writing (temporary folder)</string>
+    <string name="probing">Testing writes…</string>
+    <string name="probe_title">Test writing on the iPod?</string>
+    <string name="probe_message">iOpenPod will create a folder named iOpenPod-probe-… at the root of the iPod, write and rename about 1 MB of test files inside it, then delete the folder. Nothing else on the iPod is opened for writing. Android will ask you to choose the iPod’s root again; write access is used for this test only and is not kept.</string>
+    <string name="probe_continue">Continue</string>
+    <string name="probe_needs_write">Write access was not granted; the test did not run.</string>
     <string name="python_error">The Python runtime failed: %1$s</string>
 </resources>

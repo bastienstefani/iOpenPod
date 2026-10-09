@@ -646,8 +646,9 @@ embeds Python through Chaquopy and runs `iOpenPod.android.read_only_check`, whic
 reads a USB OTG Volume through a read-only Storage Access Framework grant,
 identifies the iPod, and parses its Library without writing. Android exposes USB
 Volumes to applications only that way, and Storage has no document-tree backend
-yet, so these reads bypass Storage and remain diagnostic. Android is not a
-release target and no Android decision has been recorded. See
+yet, so these reads bypass Storage and remain diagnostic. A separate, confirmed
+probe measures document-provider writes inside a scratch directory it deletes.
+Android is not a release target and no Android decision has been recorded. See
 `docs/android.md` for status and remaining work, and
 `docs/research/android-host-feasibility.md` for constraints and open questions.
 

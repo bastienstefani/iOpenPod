@@ -1,6 +1,7 @@
 package io.github.bastienstefani.iopenpod
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.ClipData
@@ -49,6 +50,7 @@ class MainActivity : Activity() {
     private lateinit var grantUsb: Button
     private lateinit var connection: TextView
     private lateinit var runCheck: Button
+    private lateinit var runProbe: Button
     private lateinit var shareReport: Button
     private lateinit var copyReport: Button
     private lateinit var report: TextView
@@ -130,6 +132,8 @@ class MainActivity : Activity() {
         content.addView(grantUsb)
         runCheck = button(R.string.run_check) { startCheck() }
         content.addView(runCheck)
+        runProbe = button(R.string.run_probe) { confirmProbe() }
+        content.addView(runProbe)
         shareReport = button(R.string.share_report) { share() }
         content.addView(shareReport)
         copyReport = button(R.string.copy_report) { copy() }
@@ -205,6 +209,7 @@ class MainActivity : Activity() {
         }
         connection.text = lines.joinToString("\n")
         runCheck.isEnabled = !checkRunning
+        runProbe.isEnabled = !checkRunning && mounted.any { it.uuid != null }
         shareReport.isEnabled = lastReport.isNotEmpty()
         copyReport.isEnabled = lastReport.isNotEmpty()
     }
@@ -235,7 +240,7 @@ class MainActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != REQUEST_TREE) return
+        if (requestCode != REQUEST_TREE && requestCode != REQUEST_WRITE_TREE) return
         val uri = data?.data
         if (resultCode != RESULT_OK || uri == null) return
         val expected = "${requestedVolumeUuid ?: return}:"
@@ -243,10 +248,65 @@ class MainActivity : Activity() {
             Toast.makeText(this, R.string.tree_not_root, Toast.LENGTH_LONG).show()
             return
         }
+        if (requestCode == REQUEST_WRITE_TREE) {
+            // Use the temporary grant for this probe only; never persist write access.
+            if (data.flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION == 0) {
+                Toast.makeText(this, R.string.probe_needs_write, Toast.LENGTH_LONG).show()
+                return
+            }
+            startProbe(uri)
+            return
+        }
         // Persist read access only: this check never writes to the iPod.
         contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         Toast.makeText(this, R.string.tree_saved, Toast.LENGTH_SHORT).show()
         refresh()
+    }
+
+    private fun confirmProbe() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.probe_title)
+            .setMessage(R.string.probe_message)
+            .setPositiveButton(R.string.probe_continue) { _, _ -> requestWriteTree() }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun requestWriteTree() {
+        val volume =
+            removableVolumes().firstOrNull {
+                it.state == Environment.MEDIA_MOUNTED && it.uuid != null
+            } ?: return
+        requestedVolumeUuid = volume.uuid
+        startActivityForResult(volume.createOpenDocumentTreeIntent(), REQUEST_WRITE_TREE)
+    }
+
+    private fun startProbe(treeUri: Uri) {
+        val mountPoint =
+            removableVolumes().firstOrNull { it.uuid == requestedVolumeUuid }?.directory?.path
+                ?: "/storage/$requestedVolumeUuid"
+        val request = JSONObject().put("mount_point", mountPoint).put("host", hostDescription())
+        val editor = DocumentTreeEditor(contentResolver, treeUri)
+        checkRunning = true
+        report.setText(R.string.probing)
+        refresh()
+        executor.execute {
+            val text =
+                try {
+                    if (!Python.isStarted()) Python.start(AndroidPlatform(applicationContext))
+                    val result =
+                        Python.getInstance()
+                            .getModule(PROBE_MODULE)
+                            .callAttr("run_probe_json", request.toString(), editor)
+                    JSONObject(result.toString()).getString("text")
+                } catch (error: Throwable) {
+                    getString(R.string.python_error, error.toString())
+                }
+            runOnUiThread {
+                checkRunning = false
+                showReport(text)
+            }
+        }
     }
 
     private fun requestUsbPermission() {
@@ -361,6 +421,8 @@ class MainActivity : Activity() {
         const val ACTION_USB_PERMISSION = "io.github.bastienstefani.iopenpod.USB_PERMISSION"
         const val CHECK_MODULE = "iOpenPod.android.read_only_check"
         const val TRACK_LIMIT = 500
+        const val PROBE_MODULE = "iOpenPod.android.provider_probe"
         const val REQUEST_TREE = 1
+        const val REQUEST_WRITE_TREE = 2
     }
 }

@@ -5,7 +5,9 @@ This directory holds the first Android increment described in
 [Android port status](../docs/android.md) lists what is verified, the limits, and
 the remaining work.
 The app checks that an Android phone can read an iPod connected through a USB OTG
-adapter. **It never writes to the iPod.**
+adapter. The read-only check never writes to the iPod. A separate, confirmed
+**Test writing (temporary folder)** action measures document-provider writes
+inside a new scratch directory that it deletes afterwards.
 
 Android does not let applications reach USB Volumes by path, so the user grants
 read access to the iPod's root once in the system file picker. A Kotlin activity
@@ -61,5 +63,8 @@ uninstalled.
    root and confirm. iOpenPod keeps read access only, and only to that Volume.
 4. Choose **Run read-only check**.
 5. Use **Share report** or **Copy report** to send the result.
+6. Optionally choose **Test writing (temporary folder)**, read the confirmation,
+   and choose the iPod's root again. The write access granted for this test is
+   not kept.
 
 Eject the iPod from Android's storage settings before unplugging it.

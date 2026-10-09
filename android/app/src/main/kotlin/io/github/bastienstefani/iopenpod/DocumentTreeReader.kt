@@ -10,12 +10,13 @@ import java.io.FileNotFoundException
  * Read-only access to one Volume root granted through the Storage Access Framework.
  *
  * Implements the `DocumentTree` protocol of `iOpenPod.android.read_only_check`.
- * Paths are Device Paths in POSIX form. Each name is resolved by listing its parent:
- * an exact match wins, otherwise a match ignoring case, as on FAT32.
+ * Paths are Device Paths in POSIX form; the empty path is the tree root. Each name
+ * is resolved by listing its parent: an exact match wins, otherwise a match
+ * ignoring case, as on FAT32.
  */
-class DocumentTreeReader(
-    private val resolver: ContentResolver,
-    private val treeUri: Uri,
+open class DocumentTreeReader(
+    protected val resolver: ContentResolver,
+    protected val treeUri: Uri,
 ) {
     private val rootId: String = DocumentsContract.getTreeDocumentId(treeUri)
     private val resolved = HashMap<String, String>()
@@ -25,14 +26,26 @@ class DocumentTreeReader(
     fun exists(path: String): Boolean = documentId(path) != null
 
     /** Returns a detached file descriptor; the caller owns and closes it. */
-    fun openRead(path: String): Int {
-        val id = documentId(path) ?: throw FileNotFoundException(path)
-        val uri = DocumentsContract.buildDocumentUriUsingTree(treeUri, id)
-        val descriptor = resolver.openFileDescriptor(uri, "r") ?: throw FileNotFoundException(path)
+    fun openRead(path: String): Int = open(path, "r")
+
+    protected fun open(path: String, mode: String): Int {
+        val descriptor =
+            resolver.openFileDescriptor(documentUri(path), mode)
+                ?: throw FileNotFoundException(path)
         return descriptor.detachFd()
     }
 
-    private fun documentId(path: String): String? {
+    protected fun documentUri(path: String): Uri =
+        DocumentsContract.buildDocumentUriUsingTree(
+            treeUri,
+            documentId(path) ?: throw FileNotFoundException(path),
+        )
+
+    /** Forget resolved names after the tree changed. */
+    protected fun forgetResolvedNames() = resolved.clear()
+
+    protected fun documentId(path: String): String? {
+        if (path.isEmpty()) return rootId
         var current = rootId
         var prefix = ""
         for (name in path.split('/')) {

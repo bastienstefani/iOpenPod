@@ -19,8 +19,8 @@ android {
         // read and write removable Volumes through ordinary paths.
         minSdk = 30
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0-read-only-check"
+        versionCode = 3
+        versionName = "0.3.0-provider-probe"
 
         ndk {
             abiFilters += listOf("arm64-v8a")

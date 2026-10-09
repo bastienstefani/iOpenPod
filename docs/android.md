@@ -31,7 +31,8 @@ identified exactly, its HASH72 material was found, and its Library was parsed.
 | --- | --- | --- |
 | Feasibility research | `docs/research/android-host-feasibility.md` | Includes desktop and hardware findings. |
 | Read-only check (Python) | `src/iOpenPod/android/read_only_check.py` | Implemented and tested. |
-| Tests | `tests/iOpenPod/android/test_read_only_check.py` | 21 tests, passing. |
+| Document-provider write probe (Python) | `src/iOpenPod/android/provider_probe.py` | Implemented and tested; not yet run on a phone. |
+| Tests | `tests/iOpenPod/android/` | 34 tests, passing. |
 | Android app (Kotlin, Gradle) | `android/` | Builds a 27 MB debug APK; the document-tree version passes on a phone. |
 | HASH72 without `wasmtime` | `src/iPodDB/iTunesDB/writer/signature.py` | Fixed and tested; also affects the desktop. |
 
@@ -70,6 +71,35 @@ The Python check, for each mounted removable Volume:
 Document-tree and direct reads bypass Storage. They are diagnostic only: no
 workflow may build on them until Storage owns document-tree access.
 
+### Document-provider write probe
+
+**Test writing (temporary folder)** measures how the document provider behaves
+for the operations Storage Transactions would need. After a confirmation that
+states exactly what will happen, the user chooses the iPod's root again; the
+probe uses that temporary write grant and never persists write access.
+
+`DocumentTreeEditor` exposes one call per provider operation: create a file or
+directory, open a descriptor for writing, rename, move, delete, and query
+metadata. Each call reports what the provider did, such as the name it chose.
+
+The Python probe creates a new `iOpenPod-probe-<random>` directory at the Volume
+root, refusing to reuse an existing name. A guard rejects every mutation outside
+that directory, and no existing entry is ever opened for writing. Inside it, the
+probe measures:
+
+- creating a file and whether the requested name is kept;
+- writing 1 MiB, `fsync`, reading it back, and the throughput;
+- free space reported by `fstatvfs` before and after the write;
+- provider and descriptor metadata, including document flags;
+- setting a modification time through the descriptor;
+- whether modes `w` and `wt` truncate a larger file;
+- creating a name that already exists, renaming onto an existing name, names
+  differing only by case, and FAT-invalid characters;
+- moving between directories and deleting a file.
+
+The scratch directory is deleted at the end, also after a failed measurement,
+and the report says so or names the directory left behind.
+
 The APK contains only `iPodDB`, `device_registry`, `storage`, and
 `iOpenPod/android` from `src`, with Chaquopy's Pillow 11.0.0 and pycryptodome
 3.21.0. The desktop GUI and its dependencies are excluded.
@@ -86,6 +116,10 @@ Verified in the development environment:
 - the compiled Python extracted from the APK reads a simulated Nano 5th
   generation through a document-tree double, identifies it exactly, finds HASH72
   material, and lists 60 Tracks;
+- the compiled probe runs against a double of the external storage provider
+  (unique names on create and rename, FAT character replacement, recursive
+  delete), removes its scratch directory, and leaves the rest of the Volume
+  unchanged; tests also cover the guard and cleanup after failures;
 - HASH58 and HASH72 work without `wasmtime`; HASHAB still requires it. A test
   covers both, and it fails without the fix;
 - `./gradlew assembleDebug` builds the APK with Android Gradle plugin 8.13.2,
@@ -113,12 +147,14 @@ Verified on hardware (Google Pixel, Android 17, iPod Nano 5th generation):
 
 Not verified:
 
-- any write through the document provider;
+- the write probe on a phone, and therefore any write through the real document
+  provider;
 - parsing a physical Library that contains Tracks.
 
 ## Limits of the current increment
 
-- **Read-only.** Nothing can be added, edited, or deleted on the iPod.
+- **No Library writes.** Nothing in the iPod Library can be added, edited, or
+  deleted. The only writes are the probe's, inside its own scratch directory.
 - **Storage bypassed.** Reads through the document tree happen in the check
   module, outside Storage. Storage has no document-tree backend yet.
 - **FAT32 only.** Android cannot mount a Mac-formatted (HFS+) iPod.
@@ -139,11 +175,9 @@ Not verified:
 Steps 1 to 7 each depend on the previous one.
 
 1. **Run the document-tree check on the phone.** Done; see Verification.
-2. **Probe document-provider behavior.** On a scratch directory of the iPod
-   Volume, measure what Storage Transactions rely on: creating, writing, and
-   `fsync` through provider descriptors, renaming onto an existing name,
-   deleting, timestamps, free space, and behavior when the cable is pulled. This
-   is the first step that writes, and only to a scratch directory.
+2. **Probe document-provider behavior.** Implemented as the write probe and
+   awaiting a run on the phone. Behavior when the cable is pulled during a write
+   is not measured: it risks the FAT32 Volume and needs its own decision.
 3. **Record the decision.** An ADR covering the Kotlin and Chaquopy approach, the
    minimum Android version, document-tree Volume access, the media-tool strategy,
    and the related updates to `GLOSSARY.md` (**Host** and **iOpenPod** currently

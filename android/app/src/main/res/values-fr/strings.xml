@@ -20,5 +20,11 @@
     <string name="hint_no_volume">Un périphérique USB Apple est branché mais Android n’a monté aucun volume pour lui. Un iPod formaté sur Mac (HFS+) ne peut pas être monté par Android ; il doit être restauré avec iTunes sous Windows (FAT32).</string>
     <string name="hint_no_device">Branche l’iPod avec un adaptateur USB OTG, puis attends qu’Android le monte.</string>
     <string name="no_volume_to_check">Aucun volume amovible n’est monté.</string>
+    <string name="run_probe">Tester l’écriture (dossier temporaire)</string>
+    <string name="probing">Test d’écriture…</string>
+    <string name="probe_title">Tester l’écriture sur l’iPod ?</string>
+    <string name="probe_message">iOpenPod va créer un dossier iOpenPod-probe-… à la racine de l’iPod, y écrire et renommer environ 1 Mo de fichiers de test, puis supprimer ce dossier. Rien d’autre sur l’iPod n’est ouvert en écriture. Android te demandera à nouveau de choisir la racine de l’iPod ; l’accès en écriture ne sert qu’à ce test et n’est pas conservé.</string>
+    <string name="probe_continue">Continuer</string>
+    <string name="probe_needs_write">L’accès en écriture n’a pas été accordé ; le test n’a pas été lancé.</string>
     <string name="python_error">Échec du moteur Python : %1$s</string>
 </resources>
