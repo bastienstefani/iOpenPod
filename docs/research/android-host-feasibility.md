@@ -271,6 +271,34 @@ The second run used the same phone and iPod with the document-tree check:
 - iPodDB parsed the physical iTunesCDB (about 3.6 KB): no Tracks, six Playlists,
   and the device name.
 
+## Document-provider probe findings
+
+The write probe ran on the same phone and iPod, inside a scratch directory it
+created and then deleted:
+
+| Behavior | Observation | Consequence for Storage |
+| --- | --- | --- |
+| Create, write 1 MiB, `fsync`, read back | Worked; about 20 MiB/s including `fsync`. | Provider descriptors support verified writes. |
+| Free space | `fstatvfs` on a provider descriptor reported the exact 1 MiB consumed. | Capacity checks can use a descriptor on the Volume. |
+| Metadata | Provider and `fstat` agree on size and modification time; times have whole-second precision. Flags: write, delete, rename, move. | Fingerprints can use provider or descriptor metadata. |
+| Set modification time | `futimens` fails with `EPERM`. | Storage cannot set modification times on this Volume. |
+| Mode `w` over a larger file | **Did not truncate**: the file kept its full size after a 16-byte write. | Never use `w`; always `wt`. Using `w` would leave stale trailing bytes. |
+| Mode `wt` over a larger file | Truncated. | The required write mode. |
+| Create an existing name | The provider silently chose `probe (1).bin`; the original was preserved. | Creation never overwrites, but the chosen name must be verified. |
+| Rename onto an existing name | The provider silently chose `target (1).bin`; the target was kept. | No atomic replace. A rename must be verified and replacement needs journaled steps. |
+| Names differing only by case | The second became `case (1).bin`. | Names compare ignoring case, as on FAT32. |
+| FAT-invalid characters | `a:b?.bin` became `a_b_.bin`. | Storage must validate names itself and verify the chosen name. |
+| Move between directories | Worked, content intact. | Moves are available for staging. |
+| Delete a file and a directory tree | Worked. | Cleanup and removals are available. |
+
+Pulling the cable during a write was not measured, because it risks the FAT32
+Volume.
+
+Only Backup Snapshot restore and Restore Recovery ask Storage to reproduce
+modification times (`TransactionWrite.modified_ns`). Library saves and Sync
+record the times they observe instead, so they are unaffected by the `EPERM`
+result.
+
 ## Prerequisites on the user's side
 
 - The iPod Nano 5th generation is formatted for Windows (FAT32).

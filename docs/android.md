@@ -31,7 +31,7 @@ identified exactly, its HASH72 material was found, and its Library was parsed.
 | --- | --- | --- |
 | Feasibility research | `docs/research/android-host-feasibility.md` | Includes desktop and hardware findings. |
 | Read-only check (Python) | `src/iOpenPod/android/read_only_check.py` | Implemented and tested. |
-| Document-provider write probe (Python) | `src/iOpenPod/android/provider_probe.py` | Implemented and tested; not yet run on a phone. |
+| Document-provider write probe (Python) | `src/iOpenPod/android/provider_probe.py` | Implemented, tested, and run on a phone. |
 | Tests | `tests/iOpenPod/android/` | 34 tests, passing. |
 | Android app (Kotlin, Gradle) | `android/` | Builds a 27 MB debug APK; the document-tree version passes on a phone. |
 | HASH72 without `wasmtime` | `src/iPodDB/iTunesDB/writer/signature.py` | Fixed and tested; also affects the desktop. |
@@ -143,12 +143,17 @@ Verified on hardware (Google Pixel, Android 17, iPod Nano 5th generation):
 - `HashInfo` is bound to the USB serial number, which is therefore the FireWire
   GUID;
 - iPodDB parses the physical iTunesCDB: no Tracks, six Playlists, and the device
-  name.
+  name;
+- the write probe created, measured, and deleted its scratch directory through
+  the real document provider. Writes with `fsync`, read-back, free space,
+  metadata, moves, and deletion work. Setting a modification time fails with
+  `EPERM`, mode `w` does not truncate, and creating or renaming onto an existing
+  name silently picks another name such as `target (1).bin`. Details and
+  consequences are in the research's "Document-provider probe findings".
 
 Not verified:
 
-- the write probe on a phone, and therefore any write through the real document
-  provider;
+- any Library write through the document provider;
 - parsing a physical Library that contains Tracks.
 
 ## Limits of the current increment
@@ -175,14 +180,16 @@ Not verified:
 Steps 1 to 7 each depend on the previous one.
 
 1. **Run the document-tree check on the phone.** Done; see Verification.
-2. **Probe document-provider behavior.** Implemented as the write probe and
-   awaiting a run on the phone. Behavior when the cable is pulled during a write
-   is not measured: it risks the FAT32 Volume and needs its own decision.
-3. **Record the decision.** An ADR covering the Kotlin and Chaquopy approach, the
-   minimum Android version, document-tree Volume access, the media-tool strategy,
-   and the related updates to `GLOSSARY.md` (**Host** and **iOpenPod** currently
-   mean a desktop computer and a desktop product) and to ADR-0001, ADR-0060,
-   ADR-0081, ADR-0103, and ADR-0107.
+2. **Probe document-provider behavior.** Done; see Verification. Behavior when
+   the cable is pulled during a write is not measured: it risks the FAT32 Volume
+   and needs its own decision.
+3. **Record the decision.** Proposed as
+   [ADR-0133](adr/0133-run-ipod-workflows-on-android-through-document-trees.md),
+   awaiting acceptance. It covers the Kotlin and Chaquopy approach, the minimum
+   Android version, document-tree Volume access and write rules, the media-tool
+   strategy, and the related updates to `GLOSSARY.md` (**Host** and **iOpenPod**
+   currently mean a desktop computer and a desktop product) and to ADR-0001,
+   ADR-0060, ADR-0081, ADR-0103, and ADR-0107.
 4. **Storage document-tree backend.** Storage resolves Device Paths in a granted
    tree and performs its reads, verified writes, and Storage Transactions there,
    with Volume Identity from the Volume UUID, FAT32 limits from the mount record,

@@ -205,3 +205,4 @@ What becomes easier, harder, required, or prohibited?
 - [ADR-0130: Use Pillow limits for Photo sources](0130-use-pillow-limits-for-photo-sources.md)
 - [ADR-0131: Accept bounded visible dimensions in packed artwork](0131-accept-bounded-visible-dimensions-in-packed-artwork.md)
 - [ADR-0132: Follow explicitly authorized Host symbolic links](0132-follow-explicitly-authorized-host-symbolic-links.md)
+- [ADR-0133: Run iPod workflows on Android through document trees](0133-run-ipod-workflows-on-android-through-document-trees.md) (Proposed)
