@@ -643,9 +643,11 @@ selection and saved renames. See ADR-0090 and
 
 An exploratory Android read-only check lives in `android/`. A Kotlin activity
 embeds Python through Chaquopy and runs `iOpenPod.android.read_only_check`, which
-opens a read-only Filesystem Session on a USB OTG Volume, identifies the iPod, and
-parses its Library without writing. Android is not a release target, no Android
-decision has been recorded, and the APK builds but has not yet run on hardware. See
+reads a USB OTG Volume through a read-only Storage Access Framework grant,
+identifies the iPod, and parses its Library without writing. Android exposes USB
+Volumes to applications only that way, and Storage has no document-tree backend
+yet, so these reads bypass Storage and remain diagnostic. Android is not a
+release target and no Android decision has been recorded. See
 `docs/android.md` for status and remaining work, and
 `docs/research/android-host-feasibility.md` for constraints and open questions.
 

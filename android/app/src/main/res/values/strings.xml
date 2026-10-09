@@ -3,9 +3,12 @@
     <string name="app_name" translatable="false">iOpenPod</string>
     <string name="title">iOpenPod read-only check</string>
     <string name="summary">Checks that this phone can read a connected iPod. Nothing is written to the iPod.</string>
-    <string name="access_granted">All files access: granted</string>
-    <string name="access_missing">All files access: missing. It is required to read the iPod Volume.</string>
-    <string name="grant_access">Grant all files access</string>
+    <string name="grant_tree">Allow access to the iPod</string>
+    <string name="tree_granted">read access granted</string>
+    <string name="tree_missing">no access</string>
+    <string name="tree_saved">Read access to the iPod granted</string>
+    <string name="tree_not_root">Choose the root of the iPod, not a folder inside it.</string>
+    <string name="hint_grant_tree">Choose “Allow access to the iPod”, select the iPod’s root in the file picker and confirm. iOpenPod keeps read access only.</string>
     <string name="grant_usb">Allow USB access (serial number)</string>
     <string name="run_check">Run read-only check</string>
     <string name="running">Checking…</string>
@@ -15,8 +18,7 @@
     <string name="volumes_heading">Storage Volumes</string>
     <string name="usb_heading">USB devices</string>
     <string name="none">none</string>
-    <string name="ipod_volume">iPod_Control found</string>
-    <string name="hint_no_volume">An Apple USB device is attached but no Volume contains iPod_Control. A Mac-formatted (HFS+) iPod cannot be mounted by Android; it must be restored in iTunes on Windows (FAT32).</string>
+    <string name="hint_no_volume">An Apple USB device is attached but Android mounted no Volume for it. A Mac-formatted (HFS+) iPod cannot be mounted by Android; it must be restored in iTunes on Windows (FAT32).</string>
     <string name="hint_no_device">Connect the iPod through a USB OTG adapter, then wait for Android to mount it.</string>
     <string name="no_volume_to_check">No removable Volume is mounted.</string>
     <string name="python_error">The Python runtime failed: %1$s</string>

@@ -2,9 +2,12 @@
 <resources>
     <string name="title">Vérification iOpenPod en lecture seule</string>
     <string name="summary">Vérifie que ce téléphone peut lire un iPod connecté. Rien n’est écrit sur l’iPod.</string>
-    <string name="access_granted">Accès à tous les fichiers : accordé</string>
-    <string name="access_missing">Accès à tous les fichiers : manquant. Il est nécessaire pour lire le volume de l’iPod.</string>
-    <string name="grant_access">Accorder l’accès à tous les fichiers</string>
+    <string name="grant_tree">Autoriser l’accès à l’iPod</string>
+    <string name="tree_granted">lecture autorisée</string>
+    <string name="tree_missing">aucun accès</string>
+    <string name="tree_saved">Accès en lecture à l’iPod autorisé</string>
+    <string name="tree_not_root">Choisis la racine de l’iPod, pas un dossier à l’intérieur.</string>
+    <string name="hint_grant_tree">Appuie sur « Autoriser l’accès à l’iPod », sélectionne la racine de l’iPod dans le sélecteur de fichiers et valide. iOpenPod ne garde qu’un accès en lecture.</string>
     <string name="grant_usb">Autoriser l’accès USB (numéro de série)</string>
     <string name="run_check">Lancer la vérification</string>
     <string name="running">Vérification…</string>
@@ -14,8 +17,7 @@
     <string name="volumes_heading">Volumes de stockage</string>
     <string name="usb_heading">Périphériques USB</string>
     <string name="none">aucun</string>
-    <string name="ipod_volume">iPod_Control trouvé</string>
-    <string name="hint_no_volume">Un périphérique USB Apple est branché mais aucun volume ne contient iPod_Control. Un iPod formaté sur Mac (HFS+) ne peut pas être monté par Android ; il doit être restauré avec iTunes sous Windows (FAT32).</string>
+    <string name="hint_no_volume">Un périphérique USB Apple est branché mais Android n’a monté aucun volume pour lui. Un iPod formaté sur Mac (HFS+) ne peut pas être monté par Android ; il doit être restauré avec iTunes sous Windows (FAT32).</string>
     <string name="hint_no_device">Branche l’iPod avec un adaptateur USB OTG, puis attends qu’Android le monte.</string>
     <string name="no_volume_to_check">Aucun volume amovible n’est monté.</string>
     <string name="python_error">Échec du moteur Python : %1$s</string>

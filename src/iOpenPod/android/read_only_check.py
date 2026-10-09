@@ -1,20 +1,24 @@
 """Read-only connection check run by the Android Host interface.
 
 The Android interface supplies the Mount Point of one mounted Volume, the USB
-devices it can see, and a description of the Host. This module opens a read-only
-Filesystem Session, reads identity metadata and the iTunesDB or iTunesCDB through
-Storage, identifies the iPod through Device Registry, and projects the Library
-through iPodDB. It never writes to the Volume.
+devices it can see, a description of the Host and, when the user granted one, a
+read-only Storage Access Framework document tree for the Volume. The check reads
+identity metadata and the iTunesDB or iTunesCDB, identifies the iPod through
+Device Registry, and projects the Library through iPodDB. It never writes to the
+Volume.
 
-If Storage cannot inspect the Mount Point, the check records that failure and
-continues with direct reads below the Mount Point, so a Storage adapter problem
-can be told apart from an iPodDB problem. Direct reads are diagnostic evidence
-only; no workflow may build on them.
+Android does not expose USB Volumes to applications by path, so the document tree
+is the expected route. Without one, the check opens a read-only Filesystem Session
+through Storage; if Storage cannot inspect the Mount Point, it records that failure
+and continues with direct reads below the Mount Point. Document-tree and direct
+reads are diagnostic evidence only: no workflow may build on them until Storage
+owns document-tree access.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import platform
 import sys
 from dataclasses import dataclass
@@ -111,6 +115,21 @@ class CheckReport:
         return all(step.status is not StepStatus.FAILED for step in self.steps)
 
 
+class DocumentTree(Protocol):
+    """Read access to one Volume root granted through the Storage Access Framework.
+
+    The Android interface implements it. Paths are Device Paths in POSIX form.
+    """
+
+    def describe(self) -> str: ...
+
+    def exists(self, path: str) -> bool: ...
+
+    def openRead(self, path: str) -> int:
+        """Return a detached file descriptor that the caller must close."""
+        ...
+
+
 class _DeviceReader(Protocol):
     def exists(self, path: DevicePath) -> bool: ...
 
@@ -142,6 +161,23 @@ class _DirectReader:
     def read(self, path: DevicePath, *, max_bytes: int) -> bytes:
         target = self._root.joinpath(*path.parts)
         with target.open("rb") as stream:
+            data = stream.read(max_bytes + 1)
+        if len(data) > max_bytes:
+            raise ValueError(f"{path} exceeds the {max_bytes}-byte read limit")
+        return data
+
+
+class _DocumentTreeReader:
+    """Diagnostic-only reads through a user-granted Android document tree."""
+
+    def __init__(self, tree: DocumentTree) -> None:
+        self._tree = tree
+
+    def exists(self, path: DevicePath) -> bool:
+        return bool(self._tree.exists(str(path)))
+
+    def read(self, path: DevicePath, *, max_bytes: int) -> bytes:
+        with os.fdopen(int(self._tree.openRead(str(path))), "rb") as stream:
             data = stream.read(max_bytes + 1)
         if len(data) > max_bytes:
             raise ValueError(f"{path} exceeds the {max_bytes}-byte read limit")
@@ -211,14 +247,28 @@ def run_check(
     storage: Storage,
     *,
     mountinfo: Callable[[], str] | None = None,
+    document_tree: DocumentTree | None = None,
 ) -> CheckReport:
-    """Inspect one Mount Point without writing to it."""
+    """Inspect one Volume without writing to it."""
 
     steps = _Steps()
     root = Path(request.mount_point)
     steps.add("Host", StepStatus.PASSED, _host_summary(request))
     _record_mount_records(steps, root, mountinfo or _read_mountinfo)
     _record_usb_devices(steps, request.usb_devices)
+
+    if document_tree is not None:
+        steps.add(
+            "Volume access",
+            StepStatus.PASSED,
+            f"read-only document tree {document_tree.describe()}",
+        )
+        return _inspect_device(request, _DocumentTreeReader(document_tree), steps)
+    steps.add(
+        "Volume access",
+        StepStatus.WARNING,
+        "no document tree granted; trying the Mount Point path",
+    )
 
     session: FilesystemSession | None = None
     reader: _DeviceReader
@@ -590,7 +640,10 @@ def _duration(length_ms: int) -> str:
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
-def run_check_json(request_json: str) -> str:
+def run_check_json(
+    request_json: str,
+    document_tree: DocumentTree | None = None,
+) -> str:
     """Chaquopy entry point: never raises, always returns a JSON report."""
 
     try:
@@ -599,7 +652,7 @@ def run_check_json(request_json: str) -> str:
         report = CheckReport("", (CheckStep("Request", StepStatus.FAILED, str(error)),))
     else:
         try:
-            report = run_check(request, Storage())
+            report = run_check(request, Storage(), document_tree=document_tree)
         except Exception as error:  # Diagnostic boundary: report every failure.
             report = CheckReport(
                 request.mount_point,

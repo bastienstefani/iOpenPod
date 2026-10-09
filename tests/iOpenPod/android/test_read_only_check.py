@@ -2,6 +2,7 @@
 
 import base64
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -290,3 +291,94 @@ def test_session_failure_is_reported_once_under_its_own_step(tmp_path: Path) -> 
     assert status is StepStatus.FAILED
     assert "unplugged" in detail
     assert report.track_count == 60
+
+
+class _DirectoryTree:
+    """Document tree double backed by a directory, recording opened descriptors."""
+
+    def __init__(self, root: Path) -> None:
+        self._root = root
+        self.opened: list[int] = []
+
+    def describe(self) -> str:
+        return f"content://test/tree/{self._root.name}"
+
+    def exists(self, path: str) -> bool:
+        return self._root.joinpath(path).exists()
+
+    def openRead(self, path: str) -> int:
+        descriptor = os.open(self._root.joinpath(path), os.O_RDONLY)
+        self.opened.append(descriptor)
+        return descriptor
+
+
+def _tree_check(root: Path, tree: _DirectoryTree) -> CheckReport:
+    return run_check(
+        CheckRequest(mount_point=f"/mnt/media_rw/{root.name}", usb_devices=(_NANO5,)),
+        Storage(VirtualStoragePlatform()),
+        mountinfo=lambda: "",
+        document_tree=tree,
+    )
+
+
+def test_document_tree_check_reads_library_without_storage_paths(
+    tmp_path: Path,
+) -> None:
+    root = _nano5_volume(tmp_path)
+    tree = _DirectoryTree(root)
+    before = _tree(root)
+
+    report = _tree_check(root, tree)
+
+    assert report.passed, report_text(report)
+    status, detail = _step(report, "Volume access")
+    assert status is StepStatus.PASSED
+    assert "content://test/tree/nano" in detail
+    assert all(step.name != "Storage inspection" for step in report.steps)
+    assert _step(report, "HASH72 material")[0] is StepStatus.PASSED
+    assert report.track_count == 60
+    assert _tree(root) == before
+
+
+def test_document_tree_descriptors_are_closed(tmp_path: Path) -> None:
+    tree = _DirectoryTree(_nano5_volume(tmp_path))
+
+    _tree_check(tmp_path / "nano", tree)
+
+    assert tree.opened
+    for descriptor in tree.opened:
+        with pytest.raises(OSError):
+            os.fstat(descriptor)
+
+
+def test_document_tree_without_ipod_control_fails(tmp_path: Path) -> None:
+    root = tmp_path / "usb"
+    root.mkdir()
+
+    report = _tree_check(root, _DirectoryTree(root))
+
+    assert not report.passed
+    assert _step(report, "iPod_Control")[0] is StepStatus.FAILED
+
+
+def test_missing_document_tree_is_reported_before_path_access(
+    tmp_path: Path,
+) -> None:
+    root = _nano5_volume(tmp_path)
+    platform = VirtualStoragePlatform()
+    platform.add_volume(root, label="Nano")
+
+    report = _check(root, Storage(platform), _NANO5)
+
+    assert _step(report, "Volume access")[0] is StepStatus.WARNING
+    assert _step(report, "Storage inspection")[0] is StepStatus.PASSED
+
+
+def test_json_entry_point_accepts_a_document_tree(tmp_path: Path) -> None:
+    root = _nano5_volume(tmp_path)
+    request = json.dumps({"mount_point": f"/mnt/media_rw/{root.name}"})
+
+    result = json.loads(run_check_json(request, _DirectoryTree(root)))
+
+    assert result["passed"] is True
+    assert result["track_count"] == 60

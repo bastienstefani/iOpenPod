@@ -70,22 +70,20 @@ iOpenPod and also discards the HASH72 material held in the existing database.
 
 ### Volume access
 
-Android exposes a mounted USB Volume as a public storage Volume, normally at
-`/storage/XXXX-XXXX`. An application can reach it in three ways:
+Android mounts a USB mass-storage Volume as a public storage Volume. Three access
+paths were considered:
 
 | Access path | How it works | Strengths | Limits |
 | --- | --- | --- | --- |
-| All files access (`MANAGE_EXTERNAL_STORAGE`, Android 11+) | Ordinary POSIX paths through Android's FUSE layer. | Existing path-based Storage code and Device Paths keep working. Rename, `fsync`, and direct reads are available. | Restricted on Google Play to qualifying app categories. Behavior of USB Volumes under FUSE, especially rename-over-existing, `fsync`, and `flock`, must be verified per device. |
+| All files access (`MANAGE_EXTERNAL_STORAGE`, Android 11+) | Ordinary POSIX paths through Android's FUSE layer. Refuted for USB Volumes by the first hardware run. | Existing path-based Storage code and Device Paths keep working. Rename, `fsync`, and direct reads are available. | Restricted on Google Play to qualifying app categories. Behavior of USB Volumes under FUSE, especially rename-over-existing, `fsync`, and `flock`, must be verified per device. |
 | Storage Access Framework tree grant | The user selects the Volume root; the app uses `content://` document URIs. | Play-compliant, per-Volume user consent. | No paths: every Storage operation needs a file-descriptor or URI bridge. No atomic replace; rename and delete are separate IPC calls. Slow for large trees. |
 | Userspace USB (USB Host API and a userspace FAT32 driver such as libaums) | The app claims the mass-storage interface and talks SCSI directly. | Raw access, including SCSI INQUIRY VPD pages used for identity evidence. | Detaches the kernel driver, so the system mount disappears. Requires a second, much less proven FAT32 writer, which conflicts with the device-safety goals. |
 
-All files access is the only option that preserves the current Storage design with
-modest change. It should be the first hypothesis tested; the Storage Access
-Framework remains the fallback if the target phone refuses direct USB paths or if
-store distribution becomes a requirement.
-
-Android 10 and earlier do not let ordinary applications write to secondary Volumes
-through file paths, so a path-based design implies a minimum of Android 11 (API 30).
+All files access was the first hypothesis because it would preserve the current
+Storage design. The first hardware run refuted it (see "Hardware run findings"):
+Android exposes USB Volumes to applications only through the Storage Access
+Framework. Storage therefore needs a document-tree backend before any write path,
+and the third option remains a last resort.
 
 ### Device identity evidence
 
@@ -185,20 +183,23 @@ ADR-0008, and discards the existing round-trip tests. Not recommended.
 
 ## Suggested increments
 
-1. **Read-only spike.** A minimal Android application that requests All files
-   access, lists storage Volumes and USB devices, finds `iPod_Control`, reads the
+1. **Read-only spike.** A minimal Android application that obtains read access
+   to the Volume, lists storage Volumes and USB devices, finds `iPod_Control`, reads the
    iTunesCDB through `IPodLibrary.parse`, and lists Tracks. No device writes.
    It answers: is the Volume visible, are Device Paths readable, does iPodDB run
    under Chaquopy, and what USB serial does the Nano report. Implemented in
-   `android/` and `iOpenPod.android.read_only_check`; the APK builds, awaiting a
-   run on hardware.
+   `android/` and `iOpenPod.android.read_only_check`. The first hardware run
+   refuted path access; the check now reads through a Storage Access Framework
+   grant.
 2. **Filesystem semantics probe.** Against a scratch directory on the iPod Volume,
-   measure rename-over-existing, `fsync`, `flock`, and free-space reporting through
-   FUSE. Storage Transactions depend on these behaviors.
+   measure creation, writes, `fsync`, rename onto an existing name, deletion,
+   timestamps, free-space reporting, and unplugging through the document provider.
+   Storage Transactions depend on these behaviors.
 3. **Decision.** Record the approach, the minimum Android version, the Volume access
    path, the media-tool strategy, and the glossary changes in an ADR.
-4. **Android Storage adapter and read-only browsing.** Discovery, Connection
-   Generations from Android broadcasts, Active iPod selection, and Library browsing.
+4. **Storage document-tree backend and read-only browsing.** Storage reads the
+   granted tree, Connection Generations follow Android broadcasts, and the Active
+   iPod's Library can be browsed.
 5. **Library edits.** Metadata and Playlist changes through Library Drafts and
    Storage Transactions, including HASH72 signing and verification.
 6. **Adding compatible music.** Sync Execution limited to media the Nano plays
@@ -219,10 +220,44 @@ Evidence gathered while building the read-only check, before any hardware run:
   `device_registry`, `storage`, and `iOpenPod/android`, without the desktop GUI.
 - Under Chaquopy, `Storage()` selects the Linux adapter. It inspected a real
   tmpfs Mount Point using only `/proc/self/mountinfo` and tolerated the missing
-  udev and sysfs data. On Android it will see the FUSE mount (`fuse`), not the
-  underlying `vfat` Volume, so it cannot report FAT32 limits such as the 4 GiB
-  maximum file size or case-insensitive names. The Android adapter must supply
-  them before any write path is enabled.
+  udev and sysfs data. On Android, USB Volumes are not reachable by path at all;
+  see "Hardware run findings".
+
+## Hardware run findings
+
+The first run used an iPod Nano 5th generation on a Google Pixel with Android 17
+(API 37) and the read-only check built for All files access:
+
+- Android mounted the iPod as `vfat` at `/mnt/media_rw/<uuid>` with `gid=1077`
+  (`media_rw`), `fmask=0007`, `dmask=0007`, `dirsync`, `utf8`, and a
+  `time_offset` matching the local timezone. No mount for the Volume existed
+  under `/storage`.
+- `StorageVolume.getDirectory()` returned that internal `/mnt/media_rw` path.
+  Storage and direct reads both failed with `EACCES`, although All files access
+  was granted.
+- This matches the platform's rule that only adoptable public Volumes (SD cards)
+  are visible to applications by path. USB drives are reachable through the
+  external storage document provider, which runs with the `media_rw` group.
+- The iPod was FAT32-formatted, so the Windows-format prerequisite holds for this
+  device.
+- The USB serial number has the 16-hexadecimal-digit FireWire GUID form with
+  Apple's `000A27` prefix. Whether it matches the GUID bound to `HashInfo`
+  awaits the next run.
+- Chaquopy's Python 3.12.12 started and ran the check on the phone.
+
+Consequences:
+
+- The check now asks the user to grant the iPod's root through
+  `StorageVolume.createOpenDocumentTreeIntent()`, persists **read** access only,
+  and reads files through detached descriptors from the document provider. The
+  app no longer requests All files access.
+- Storage needs a document-tree backend: resolving Device Paths to document IDs,
+  reading and writing through provider file descriptors, and creating, renaming,
+  and deleting documents. Whether the provider can replace an existing name,
+  honors `fsync` on its descriptors, preserves timestamps, and reports free space
+  must be measured before Storage Transactions rely on it.
+- The `mountinfo` record still reveals the real filesystem type and mount
+  options, which a future Android adapter can use for FAT32 limits.
 
 ## Prerequisites on the user's side
 
@@ -230,3 +265,4 @@ Evidence gathered while building the read-only check, before any hardware run:
 - It has been synced at least once by iTunes, so HASH72 material exists.
 - The phone runs Android 11 or later and supports USB OTG mass storage.
 - The phone shows the iPod as a USB storage Volume when connected.
+- The user grants access to the iPod's root once in the system file picker.

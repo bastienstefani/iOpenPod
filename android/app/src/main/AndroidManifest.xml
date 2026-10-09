@@ -1,16 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-feature
         android:name="android.hardware.usb.host"
         android:required="false" />
 
-    <!-- Removable Volumes are reached through ordinary paths, which requires All
-         files access. This build is for personal installation, not Google Play. -->
-    <uses-permission
-        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" />
+    <!-- Android exposes USB Volumes to applications only through the Storage Access
+         Framework, so no storage permission is requested. -->
 
     <application
         android:allowBackup="false"
