@@ -81,11 +81,8 @@ class MainActivity : Activity() {
                 addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
                 addAction(ACTION_USB_PERMISSION)
             }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(usbReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(usbReceiver, filter)
-        }
+        // Android 12 and earlier ignore the flag; the receiver only refreshes the screen.
+        registerReceiver(usbReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
     }
 
     override fun onResume() {

@@ -19,8 +19,8 @@ code. The first increment is a **read-only check**: it shows whether the phone c
 see the iPod, identifies it, reports whether HASH72 signing material is available,
 and lists its Tracks. It never writes to the iPod.
 
-The code is written and tested on the desktop, but the APK has not been built and
-the check has not run on a phone.
+The debug APK builds and passes Android Lint without errors. The check has not yet
+run on a phone.
 
 ## What exists
 
@@ -29,7 +29,7 @@ the check has not run on a phone.
 | Feasibility research | `docs/research/android-host-feasibility.md` | Written; includes findings from building the check. |
 | Read-only check (Python) | `src/iOpenPod/android/read_only_check.py` | Implemented and tested. |
 | Tests | `tests/iOpenPod/android/test_read_only_check.py` | 16 tests, passing. |
-| Android app (Kotlin, Gradle) | `android/` | Written; not yet built into an APK. |
+| Android app (Kotlin, Gradle) | `android/` | Builds a 27 MB debug APK; not yet run on a phone. |
 | HASH72 without `wasmtime` | `src/iPodDB/iTunesDB/writer/signature.py` | Fixed and tested; also affects the desktop. |
 
 ### Read-only check
@@ -67,7 +67,7 @@ The APK contains only `iPodDB`, `device_registry`, `storage`, and
 
 ## Verification
 
-Verified on the desktop:
+Verified in the development environment:
 
 - the read-only check tests pass, including one that compares every file on the
   Volume before and after the check;
@@ -80,14 +80,24 @@ Verified on the desktop:
 - `MainActivity.kt` compiles without warnings against the Android 16 (API 36)
   framework classes and the Chaquopy 17 Java API;
 - HASH58 and HASH72 work without `wasmtime`; HASHAB still requires it. A new test
-  covers both, and it fails without the fix.
+  covers both, and it fails without the fix;
+- `./gradlew assembleDebug` builds the APK with Android Gradle plugin 8.13.2,
+  Kotlin 2.2.21, Chaquopy 17.0.0, and either the system Python 3.12 or the UV
+  environment's interpreter. The APK targets API 36, requires API 30, and contains
+  only `arm64-v8a` code;
+- the APK's Python payload holds 278 files from `device_registry`, `iPodDB`,
+  `storage`, and `iOpenPod/android`, with no desktop GUI module, plus Pillow
+  11.0.0 and pycryptodome 3.21.0;
+- `./gradlew lintDebug` reports no errors. Its remaining warnings are a missing
+  application icon, a newer Gradle patch release, no x86_64 build for ChromeOS,
+  the deprecated `allowBackup` attribute, and a flag Android 12 and earlier
+  ignore.
 
 Not verified:
 
-- the Gradle build. Google Maven, the Android SDK, and Chaquopy's package index
-  were unreachable from the development environment. The plugin versions (Android
-  Gradle plugin 8.13.0, Kotlin 2.2.21, Chaquopy 17.0.0) still need confirming;
-- any run on a phone or with a physical iPod.
+- any run of the app. The development environment has no hardware
+  virtualization, so the Android emulator cannot run there;
+- any run with a physical iPod.
 
 ## Limits of the current increment
 
@@ -115,9 +125,7 @@ Not verified:
 
 Steps 1 to 7 each depend on the previous one.
 
-1. **Build the APK and run the check on the phone.** Requires a development
-   environment that can reach Google Maven, the Android SDK, and `chaquo.com`.
-   The report should confirm that the Volume is visible and readable, the
+1. **Run the check on the phone.** The report should confirm that the Volume is visible and readable, the
    filesystem actually used, the USB serial number, and whether that serial
    matches the FireWire GUID bound to `HashInfo`.
 2. **Probe filesystem behavior.** On a scratch directory of the iPod Volume,

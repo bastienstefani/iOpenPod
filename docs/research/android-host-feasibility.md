@@ -190,7 +190,8 @@ ADR-0008, and discards the existing round-trip tests. Not recommended.
    iTunesCDB through `IPodLibrary.parse`, and lists Tracks. No device writes.
    It answers: is the Volume visible, are Device Paths readable, does iPodDB run
    under Chaquopy, and what USB serial does the Nano report. Implemented in
-   `android/` and `iOpenPod.android.read_only_check`; awaiting a run on hardware.
+   `android/` and `iOpenPod.android.read_only_check`; the APK builds, awaiting a
+   run on hardware.
 2. **Filesystem semantics probe.** Against a scratch directory on the iPod Volume,
    measure rename-over-existing, `fsync`, `flock`, and free-space reporting through
    FUSE. Storage Transactions depend on these behaviors.
