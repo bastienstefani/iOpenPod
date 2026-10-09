@@ -22,8 +22,8 @@ available, and lists its Tracks. It never writes to the iPod.
 
 The first run on a phone showed that Android does not expose USB Volumes to
 applications by path. The check now reads the iPod through a read-only Storage
-Access Framework grant of its root. That version builds but has not yet run on
-the phone.
+Access Framework grant of its root, and the second run passed: the iPod was
+identified exactly, its HASH72 material was found, and its Library was parsed.
 
 ## What exists
 
@@ -32,7 +32,7 @@ the phone.
 | Feasibility research | `docs/research/android-host-feasibility.md` | Includes desktop and hardware findings. |
 | Read-only check (Python) | `src/iOpenPod/android/read_only_check.py` | Implemented and tested. |
 | Tests | `tests/iOpenPod/android/test_read_only_check.py` | 21 tests, passing. |
-| Android app (Kotlin, Gradle) | `android/` | Builds a 27 MB debug APK; the path-based version ran once on a phone. |
+| Android app (Kotlin, Gradle) | `android/` | Builds a 27 MB debug APK; the document-tree version passes on a phone. |
 | HASH72 without `wasmtime` | `src/iPodDB/iTunesDB/writer/signature.py` | Fixed and tested; also affects the desktop. |
 
 ### Read-only check
@@ -97,21 +97,24 @@ Verified in the development environment:
   the deprecated `allowBackup` attribute, and a flag Android 12 and earlier
   ignore.
 
-Verified on hardware (path-based version, Google Pixel, Android 17):
+Verified on hardware (Google Pixel, Android 17, iPod Nano 5th generation):
 
 - the app starts and Chaquopy runs Python 3.12.12;
 - the iPod is mounted as FAT32 (`vfat`) at `/mnt/media_rw/<uuid>`, readable only
   by the `media_rw` group, with no mount under `/storage`; reads by path fail
   with `EACCES` even with All files access;
-- the iPod reports USB `05ac:1265` and a serial number in FireWire GUID form.
+- through the read-only document-tree grant, `DocumentTreeReader` reads
+  `SysInfo`, `SysInfoExtended`, `HashInfo`, and the iTunesCDB;
+- Device Registry identifies the iPod exactly as an 8 GB Nano 5th generation;
+- `HashInfo` is bound to the USB serial number, which is therefore the FireWire
+  GUID;
+- iPodDB parses the physical iTunesCDB: no Tracks, six Playlists, and the device
+  name.
 
 Not verified:
 
-- the document-tree version on a phone, including `DocumentTreeReader`, which
-  cannot run in the development environment because it has no hardware
-  virtualization for the Android emulator;
-- whether the USB serial number matches the FireWire GUID bound to `HashInfo`;
-- parsing the physical iPod's Library.
+- any write through the document provider;
+- parsing a physical Library that contains Tracks.
 
 ## Limits of the current increment
 
@@ -135,9 +138,7 @@ Not verified:
 
 Steps 1 to 7 each depend on the previous one.
 
-1. **Run the document-tree check on the phone.** The report should show the
-   Library, the identification, and whether the USB serial number matches the
-   FireWire GUID bound to `HashInfo`.
+1. **Run the document-tree check on the phone.** Done; see Verification.
 2. **Probe document-provider behavior.** On a scratch directory of the iPod
    Volume, measure what Storage Transactions rely on: creating, writing, and
    `fsync` through provider descriptors, renaming onto an existing name,

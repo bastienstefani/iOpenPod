@@ -241,8 +241,7 @@ The first run used an iPod Nano 5th generation on a Google Pixel with Android 17
 - The iPod was FAT32-formatted, so the Windows-format prerequisite holds for this
   device.
 - The USB serial number has the 16-hexadecimal-digit FireWire GUID form with
-  Apple's `000A27` prefix. Whether it matches the GUID bound to `HashInfo`
-  awaits the next run.
+  Apple's `000A27` prefix.
 - Chaquopy's Python 3.12.12 started and ran the check on the phone.
 
 Consequences:
@@ -258,6 +257,19 @@ Consequences:
   must be measured before Storage Transactions rely on it.
 - The `mountinfo` record still reveals the real filesystem type and mount
   options, which a future Android adapter can use for FAT32 limits.
+
+The second run used the same phone and iPod with the document-tree check:
+
+- The read-only grant of the iPod's root worked. `SysInfo` (204 bytes),
+  `SysInfoExtended` (about 5.5 KB), `HashInfo`, and the iTunesCDB were read
+  through the document provider.
+- Device Registry identified the iPod exactly as an 8 GB iPod Nano 5th
+  generation from `SysInfo`, the USB identifiers, and the USB serial number.
+- `HashInfo` is bound to the USB serial number, so on this model the USB serial
+  number is the FireWire GUID. Android can therefore supply the
+  current-hardware signing identity without SCSI access.
+- iPodDB parsed the physical iTunesCDB (about 3.6 KB): no Tracks, six Playlists,
+  and the device name.
 
 ## Prerequisites on the user's side
 
